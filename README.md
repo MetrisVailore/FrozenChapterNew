@@ -62,13 +62,6 @@ pip install -r requirements.txt
 pip install flash-attn --no-build-isolation
 ```
 
-### Step 3: Copy Files
-
-Copy all the source files from the artifacts:
-- `config/training_config.py`
-- `src/dataset.py`, `src/model.py`, `src/trainer.py`, `src/attention.py`, `src/utils.py`
-- `scripts/prepare_data.py`, `scripts/train.py`, `scripts/inference.py`, `scripts/evaluate.py`
-
 ## 🎯 Quick Start Guide
 
 ### 1. Prepare Your Data
