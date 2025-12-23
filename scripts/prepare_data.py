@@ -5,7 +5,7 @@ Converts various data formats to training-ready .jsonl files.
 """
 
 import argparse
-import json
+import ujson as json
 import jsonlines
 import pandas as pd
 from pathlib import Path

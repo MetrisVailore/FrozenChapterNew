@@ -4,7 +4,7 @@ Dataset Module
 Flexible dataset loader supporting multiple conversation formats.
 """
 
-import json
+import ujson as json
 import jsonlines
 from pathlib import Path
 from typing import Dict, List

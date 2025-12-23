@@ -11,7 +11,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import argparse
 import torch
-import json
+import ujson as json
 import jsonlines
 from pathlib import Path
 from tqdm import tqdm

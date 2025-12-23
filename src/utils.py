@@ -7,7 +7,7 @@ Helper functions for training and evaluation.
 import torch
 import random
 import numpy as np
-import json
+import ujson as json
 from pathlib import Path
 from typing import Dict, Any
 
