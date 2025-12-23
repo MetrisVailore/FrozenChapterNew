@@ -12,7 +12,7 @@ import torch
 @dataclass
 class ModelConfig:
     """Model architecture and quantization settings."""
-    model_name: str = "mistralai/Mistral-7B-v0.1"
+    model_name: str = "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
     max_seq_length: int = 2048
     use_flash_attention_2: bool = True
     trust_remote_code: bool = True
@@ -124,7 +124,7 @@ class CheckpointConfig:
 class WandBConfig:
     """Weights & Biases configuration."""
     enabled: bool = True
-    project: str = "blueberry-nano-speedrun"
+    project: str = "frozen-chapter"
     entity: Optional[str] = None
     name: Optional[str] = None
     tags: List[str] = field(default_factory=lambda: ["qlora", "mistral"])
