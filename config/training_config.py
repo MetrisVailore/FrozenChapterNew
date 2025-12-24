@@ -14,7 +14,7 @@ class ModelConfig:
     """Model architecture and quantization settings."""
     model_name: str = "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
     max_seq_length: int = 2048
-    use_flash_attention_2: bool = True
+    use_flash_attention_2: bool = False
     trust_remote_code: bool = True
 
     # Quantization (QLoRA)

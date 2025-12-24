@@ -12,7 +12,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import argparse
 import torch
 from pathlib import Path
-from transformers import TrainingArguments
+from transformers.training_args import TrainingArguments
 from trl import SFTTrainer
 import wandb
 import time
