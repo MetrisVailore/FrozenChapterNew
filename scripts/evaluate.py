@@ -40,7 +40,7 @@ def load_model(model_path: str, base_model: str = None):
         if base_model:
             base = AutoModelForCausalLM.from_pretrained(
                 base_model,
-                torch_dtype=torch.float16,
+                dtype=torch.float16,
                 device_map="auto",
                 trust_remote_code=True
             )
@@ -50,7 +50,7 @@ def load_model(model_path: str, base_model: str = None):
     except:
         model = AutoModelForCausalLM.from_pretrained(
             model_path,
-            torch_dtype=torch.float16,
+            dtype=torch.float16,
             device_map="auto",
             trust_remote_code=True
         )

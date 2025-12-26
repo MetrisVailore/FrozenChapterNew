@@ -1,6 +1,7 @@
 # 🚀 SOTA AI Training Stack - RTX 4060 Optimized
 
-A production-ready, modular training framework for fine-tuning large language models on custom datasets with limited GPU memory.
+My mini testing modular training framework for fine-tuning large language models on custom datasets with limited GPU memory.
+No liability tho, be cautious what you're doing!
 
 ## ✨ Features
 

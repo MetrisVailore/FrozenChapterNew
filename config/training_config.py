@@ -108,7 +108,7 @@ class CheckpointConfig:
     save_steps: int = 100
     save_total_limit: int = 3
     save_strategy: str = "steps"
-    load_best_model_at_end: bool = True
+    load_best_model_at_end: bool = False
 
     # Evaluation
     eval_steps: int = 100

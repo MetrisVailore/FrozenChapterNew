@@ -79,7 +79,7 @@ class ConversationDataset(Dataset):
     def __len__(self) -> int:
         return len(self.data)
 
-    def __getitem__(self, idx: int) -> Dict[str, str]:
+    def __getitem__(self, idx: int) -> Dict:
         item = self.data[idx]
 
         if self.format_type == "sharegpt":
@@ -93,7 +93,23 @@ class ConversationDataset(Dataset):
         else:
             raise ValueError(f"Unknown format: {self.format_type}")
 
-        return {"text": text}
+        # Tokenize to return input_ids so that Trainer and samplers
+        # (e.g. LengthGroupedSampler) can infer sequence lengths.
+        enc = self.tokenizer(
+            text,
+            truncation=True,
+            max_length=self.max_length,
+            padding="max_length",
+        )
+
+        input_ids = enc["input_ids"]
+        attention_mask = enc.get("attention_mask")
+
+        return {
+            "input_ids": input_ids,
+            "attention_mask": attention_mask,
+            "labels": input_ids,
+        }
 
     def _format_sharegpt(self, item: Dict) -> str:
         """Format ShareGPT multi-turn conversations."""

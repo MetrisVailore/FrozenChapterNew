@@ -62,7 +62,7 @@ def setup_model(config) -> Tuple[AutoModelForCausalLM, AutoTokenizer]:
         "quantization_config": bnb_config,
         "device_map": "auto",
         "trust_remote_code": model_config.trust_remote_code,
-        "torch_dtype": model_config.get_compute_dtype(),
+        "dtype": model_config.get_compute_dtype(),
     }
 
     # Add Flash Attention 2 if available

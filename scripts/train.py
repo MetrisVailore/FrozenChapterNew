@@ -12,8 +12,8 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import argparse
 import torch
 from pathlib import Path
-from transformers.training_args import TrainingArguments
 from trl import SFTTrainer
+from transformers.training_args import TrainingArguments
 import wandb
 import time
 
@@ -42,7 +42,37 @@ def parse_args():
 
 
 def setup_training_args(config: Config) -> TrainingArguments:
-    """Create TrainingArguments from config."""
+    """Create TrainingArguments from config (robust to where evaluation_strategy is defined)."""
+
+    # prefer config.training.evaluation_strategy, fallback to config.checkpoint.evaluation_strategy, else default
+    evaluation_strategy = getattr(config.training, "evaluation_strategy", None)
+    if evaluation_strategy is None:
+        evaluation_strategy = getattr(config.checkpoint, "evaluation_strategy", None)
+    if evaluation_strategy is None:
+        evaluation_strategy = "steps"
+
+    eval_steps = getattr(config.checkpoint, "eval_steps", None)
+    save_steps = getattr(config.checkpoint, "save_steps", None)
+    save_strategy = getattr(config.checkpoint, "save_strategy", None)
+    logging_steps = getattr(config.checkpoint, "logging_steps", None)
+    load_best = getattr(config.checkpoint, "load_best_model_at_end", False)
+
+    # If load_best_model_at_end is requested, ensure eval and save strategies match.
+    # Prefer the explicit save_strategy if provided (so checkpoints line up with saves).
+    if load_best:
+        if save_strategy is not None:
+            # align evaluation to save strategy
+            if evaluation_strategy != save_strategy:
+                evaluation_strategy = save_strategy
+                if evaluation_strategy == "steps" and eval_steps is None:
+                    eval_steps = save_steps or 500
+        else:
+            # no save_strategy set — fallback to steps and align eval/save
+            save_strategy = evaluation_strategy or "steps"
+            if save_strategy == "steps" and save_steps is None:
+                save_steps = eval_steps or 500
+
+    report_to = config.checkpoint.report_to if (hasattr(config.checkpoint, "report_to") and config.wandb.enabled) else "none"
 
     return TrainingArguments(
         output_dir=config.checkpoint.output_dir,
@@ -51,39 +81,41 @@ def setup_training_args(config: Config) -> TrainingArguments:
         num_train_epochs=config.training.num_epochs,
         per_device_train_batch_size=config.training.batch_size,
         per_device_eval_batch_size=config.training.batch_size,
-        gradient_accumulation_steps=config.training.gradient_accumulation_steps,
+        gradient_accumulation_steps=getattr(config.training, "gradient_accumulation_steps", 1),
 
-        optim=config.training.optimizer_type,
+        optim=getattr(config.training, "optimizer_type", None),
         learning_rate=config.training.learning_rate,
-        weight_decay=config.training.weight_decay,
-        warmup_ratio=config.training.warmup_ratio,
-        lr_scheduler_type=config.training.scheduler_type,
-        max_grad_norm=config.training.max_grad_norm,
+        weight_decay=getattr(config.training, "weight_decay", 0.0),
+        warmup_ratio=getattr(config.training, "warmup_ratio", 0.0),
+        lr_scheduler_type=getattr(config.training, "scheduler_type", None),
+        max_grad_norm=getattr(config.training, "max_grad_norm", 1.0),
 
-        bf16=config.training.bf16,
-        fp16=config.training.fp16,
+        bf16=getattr(config.training, "bf16", False),
+        fp16=getattr(config.training, "fp16", False),
 
-        gradient_checkpointing=config.training.gradient_checkpointing,
-        group_by_length=config.training.group_by_length,
+        gradient_checkpointing=getattr(config.training, "gradient_checkpointing", False),
+        group_by_length=getattr(config.training, "group_by_length", False),
 
-        save_strategy=config.checkpoint.save_strategy,
-        save_steps=config.checkpoint.save_steps,
-        save_total_limit=config.checkpoint.save_total_limit,
-        load_best_model_at_end=config.checkpoint.load_best_model_at_end,
+        # evaluation_strategy=evaluation_strategy,
+        eval_steps=eval_steps,
 
-        evaluation_strategy=config.checkpoint.evaluation_strategy,
-        eval_steps=config.checkpoint.eval_steps,
+        save_strategy=save_strategy,
+        save_steps=save_steps,
+        save_total_limit=getattr(config.checkpoint, "save_total_limit", None),
+        load_best_model_at_end=load_best,
 
-        logging_dir=config.checkpoint.logging_dir,
-        logging_steps=config.checkpoint.logging_steps,
-        report_to=config.checkpoint.report_to if config.wandb.enabled else "none",
+        logging_dir=getattr(config.checkpoint, "logging_dir", None),
+        logging_steps=logging_steps,
+        report_to=report_to,
 
-        dataloader_num_workers=config.num_workers,
-        dataloader_pin_memory=config.pin_memory,
+        dataloader_num_workers=getattr(config, "num_workers", 0),
+        dataloader_pin_memory=getattr(config, "pin_memory", False),
 
         ddp_find_unused_parameters=False,
         remove_unused_columns=False,
     )
+
+
 
 
 def train(config: Config):
@@ -138,23 +170,40 @@ def train(config: Config):
             config.data.conversation_format
         )
 
+    print("TrainingArguments class:", TrainingArguments)
+    print("Location:", __import__('inspect').getfile(TrainingArguments))
+
     # Setup training
     training_args = setup_training_args(config)
 
     print("\n⚙️  Initializing trainer...")
     trainer_class = NEFTuneTrainer if config.training.use_neftune else SFTTrainer
 
-    trainer = trainer_class(
+    # Base kwargs common to both trainers
+    trainer_kwargs = dict(
         model=model,
         args=training_args,
         train_dataset=train_dataset,
         eval_dataset=val_dataset,
-        tokenizer=tokenizer,
-        dataset_text_field="text",
-        max_seq_length=config.model.max_seq_length,
-        packing=False,
-        neftune_noise_alpha=config.training.neftune_noise_alpha if config.training.use_neftune else None,
     )
+
+    if trainer_class is NEFTuneTrainer:
+        # Use standard HF Trainer API with tokenizer and NEFTune noise
+        trainer_kwargs.update(
+            tokenizer=tokenizer,
+            neftune_noise_alpha=config.training.neftune_noise_alpha
+            if config.training.use_neftune
+            else None,
+        )
+    else:
+        # SFTTrainer expects text-field and packing-related arguments,
+        # but our dataset is already tokenized; these are kept for compatibility.
+        trainer_kwargs.update(
+            dataset_text_field="text",
+            max_seq_length=config.model.max_seq_length,
+            packing=False,
+        )
+    trainer = trainer_class(**trainer_kwargs)
 
     save_config(config, config.checkpoint.output_dir)
 
