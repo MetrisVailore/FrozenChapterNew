@@ -72,7 +72,8 @@ def setup_training_args(config: Config) -> TrainingArguments:
             if save_strategy == "steps" and save_steps is None:
                 save_steps = eval_steps or 500
 
-    report_to = config.checkpoint.report_to if (hasattr(config.checkpoint, "report_to") and config.wandb.enabled) else "none"
+    report_to = config.checkpoint.report_to if (
+                hasattr(config.checkpoint, "report_to") and config.wandb.enabled) else "none"
 
     return TrainingArguments(
         output_dir=config.checkpoint.output_dir,
@@ -114,8 +115,6 @@ def setup_training_args(config: Config) -> TrainingArguments:
         ddp_find_unused_parameters=False,
         remove_unused_columns=False,
     )
-
-
 
 
 def train(config: Config):
